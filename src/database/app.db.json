@@ -1,0 +1,33 @@
+{
+    "ffmpeg": {
+        "amd64": "https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz",
+        "i686": "https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-i686-static.tar.xz"
+    },
+    "tor": {
+        "amd64": "https://www.torproject.org/dist/tor-0.4.8.7.tar.gz"
+    },
+    "docker": {
+        "amd64": "https://download.docker.com/linux/static/stable/x86_64/docker-24.0.6.tgz"
+    },
+    "nodejs": {
+        "amd64": "https://nodejs.org/dist/v20.5.1/node-v20.5.1-linux-x64.tar.xz",
+        "i686": "https://nodejs.org/dist/v20.5.1/node-v20.5.1-linux-x86.tar.xz"
+    },
+    "go": {
+        "amd64": "https://go.dev/dl/go1.20.7.linux-amd64.tar.gz",
+        "i686": "https://go.dev/dl/go1.20.7.linux-386.tar.gz"
+    },
+    "htop": {
+        "amd64": "https://github.com/htop-dev/htop/releases/download/3.1.2/htop-3.1.2-linux-amd64.tar.gz",
+        "i686": "https://github.com/htop-dev/htop/releases/download/3.1.2/htop-3.1.2-linux-i686.tar.gz"
+    },
+    "jq": {
+        "amd64": "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64",
+        "i686": "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux32"
+    },
+    "terraform": {
+        "amd64": "https://releases.hashicorp.com/terraform/1.5.4/terraform_1.5.4_linux_amd64.zip"
+    }
+}
+
+

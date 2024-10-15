@@ -1,0 +1,8 @@
+{
+    "name" : "origin",
+    "x" : ["#FEFEFE","#444444"],
+    "z" : ["#000000","NONE","#222222"],
+    "c" : ["#e51eff","#049cf6","#ff38ff","#01b4ff","#ff87ff","#02e2fd","#ff9efe","#00feff","#40eeff"],
+    "a" : "#FFFFFF",
+    "@" : ["#87ffff","#87ff00","#ff7fff","#feec90"]
+}

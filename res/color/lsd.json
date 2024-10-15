@@ -1,0 +1,8 @@
+{
+    "name" : "lsd",
+    "x" : ["#FEFEFE","#444444"],
+    "z" : ["#000000","NONE","#222222"],
+    "c" : ["#e51eff","#049cf6","#ff38ff","#01b4ff","#ff87ff","#02e2fd","#ff9efe","#00feff","#40eeff"],
+    "a" : "#FFFFFF",
+    "@" : ["#ff38ff","#04acf6","#00feff","#ff9efe"]
+}

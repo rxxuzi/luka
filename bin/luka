@@ -1,0 +1,84 @@
+#!/bin/bash
+# luka - A CLI app for Linux
+# 
+# Copyright (C) 2024 rxxuzi
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+SOURCE="$(cd "$(dirname "$0")/../src" && pwd)"
+VERSION_FILE="$(dirname "$0")/.VERSION"
+
+if [ -f "$VERSION_FILE" ]; then
+    version=$(cat "$VERSION_FILE")
+else
+    version="unknown"
+fi
+
+# アスキーアート
+ASCII_ART="\
+ooooo                   oooo                    
+ 888        oooo  oooo   888  ooooo   ooooooo   
+ 888         888   888   888o888      ooooo888  
+ 888      o  888   888   8888 88o   888    888  
+o888ooooo88   888o88 8o o888o o888o  88ooo88 8o
+"
+
+function show_version() {
+    echo -e "\e[36m"
+    echo "$ASCII_ART"
+    echo -e "luka version $version \e[0m\n"
+    echo "Copyright (C) 2024 rxxuzi"
+    echo "This is free software; see the source for copying conditions.  There is NO"
+    echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+}
+
+function show_help() {
+    echo "luka - A CLI app for Linux"
+    echo
+    echo "Usage:"
+    echo "  luka app               - Manage applications"
+    echo "  luka venv              - Setup Python virtual environment"
+    echo "  luka color             - Vim & Terminal Color Scheme Management Tool"
+    echo "  luka sysinfo           - Display system information"
+    echo "  luka version           - Show version information"
+    echo "  luka help              - Show this help message"
+    echo "  lpath                  - Manage PATH entries"
+    echo
+    echo "Each command supports '-h' for more information."
+}
+
+if [ $# -eq 0 ]; then
+    show_help
+    exit 0
+fi
+
+case "$1" in
+    app)
+        python3 "$SOURCE/app.py" "${@:2}"
+        ;;
+    venv)
+        bash "$SOURCE/shell/venv-setup.sh" "${@:2}"
+        ;;
+    color)
+        python3 "$SOURCE/color.py" "${@:2}"
+        ;;
+    sysinfo)
+        bash "$SOURCE/shell/sysinfo.sh" "${@:2}"
+        ;;
+    path)
+        lpath "${@:2}"
+        ;;
+    version|--version|-v)
+        show_version
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        echo "Invalid command. Type 'luka help' for a list of commands."
+        exit 1
+        ;;
+esac
