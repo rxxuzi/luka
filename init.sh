@@ -63,7 +63,7 @@ fi
 cp "$VIM_COLORS_DIR"/*.vim "$HOME_VIM_COLORS"
 echo "Vim colorschemes have been copied to ~/.vim/colors."
 
-source "~/.bashrc"
+source "$HOME/.bashrc"
 chmod +x "$SOURCE/../bin/luka"
 echo "bin/luka has been made executable."
 
