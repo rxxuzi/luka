@@ -17,7 +17,7 @@ VIM_COLORS_DIR="$RES_DIR/scripts"
 HOME_VIMRC="$HOME/.vimrc"
 HOME_VIM_COLORS="$HOME/.vim/scripts"
 BASH_ALIASES_PATH="$SOURCE/bashrc/aliases.bash"
-LUKA_BASHRC="$SOURCE/bashrc/luka.bashrc"
+LUKA_BASHRC="~/luka/src/bashrc/luka.bashrc"
 HOME_BASHRC="$HOME/.bashrc"
 ORIGINAL_BASHRC="$HOME/.bashrc.original"
 FLAG_FILE="$HOME/.luka_initialized"
@@ -63,7 +63,7 @@ fi
 cp "$VIM_COLORS_DIR"/*.vim "$HOME_VIM_COLORS"
 echo "Vim colorschemes have been copied to ~/.vim/colors."
 
-source "$HOME/.bashrc"
+source "~/.bashrc"
 chmod +x "$SOURCE/../bin/luka"
 echo "bin/luka has been made executable."
 
