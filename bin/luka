@@ -69,9 +69,6 @@ case "$1" in
     sysinfo)
         bash "$SOURCE/shell/sysinfo.sh" "${@:2}"
         ;;
-    path)
-        lpath "${@:2}"
-        ;;
     torch)
         bash "$SOURCE/shell/torch.sh" "${@:2}"
         ;;

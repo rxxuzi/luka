@@ -80,86 +80,13 @@ case "$TERM" in
         ;;
 esac
 
-# エイリアスの読み込み
+# エイリアスと関数の読み込み
 . ~/luka/src/bashrc/aliases.bash
+. ~/luka/src/bashrc/func.bashrc
 
 # 不要な関数と変数のクリーンアップ
 unset -f fg bg
 unset bold reset
 unset c1 c2 c3 c4
 
-# lpath command
-lpath() {
-    local num_args=$#
-    if [ "$num_args" -lt 1 ]; then
-        echo "Usage:"
-        echo "  lpath += <path>   : Add a new path to PATH"
-        echo "  lpath -= <path>   : Remove a path from PATH"
-        echo "  lpath !           : Clean up duplicate paths in PATH"
-        echo "  lpath list        : List all paths in PATH"
-        echo "  lpath help        : Show this help message"
-        return 1
-    fi
-
-    local action="$1"
-    local path="$2"
-
-    case "$action" in
-        "+="|"add")
-            if [ -z "$path" ]; then
-                echo "Error: No path provided for 'add' command."
-                echo "Usage: lpath += <path> or lpath add <path>"
-                return 1
-            fi
-            local abs_path
-            abs_path=$(realpath -m "$path")
-            if echo ":$PATH:" | grep -q ":$abs_path:"; then
-                echo "Path already exists: $abs_path"
-            else
-                export PATH="$PATH:$abs_path"
-                echo "Path added: $abs_path"
-            fi
-            ;;
-        "-="|"remove"|"del")
-            if [ -z "$path" ]; then
-                echo "Error: No path provided for 'remove' command."
-                echo "Usage: lpath -= <path> or lpath remove <path> or lpath del <path>"
-                return 1
-            fi
-            local abs_remove
-            abs_remove=$(realpath -m "$path")
-            export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "^$abs_remove$" | paste -sd ':' -)
-            echo "Path removed: $abs_remove"
-            ;;
-        "!")
-            export PATH=$(echo "$PATH" | tr ':' '\n' | awk '!seen[$0]++' | paste -sd ':' -)
-            echo "PATH has been cleaned up. Duplicates removed."
-            ;;
-        "list"|"-l")
-            echo "PATH Entries:"
-            IFS=':' read -ra ADDR <<< "$PATH"
-            for i in "${!ADDR[@]}"; do
-                printf "%d. %s (%s)\n" $((i+1)) "${ADDR[i]}" "$(realpath -m "${ADDR[i]}")"
-            done
-            ;;
-        "help"|"--help"|"-h")
-            echo "Usage:"
-            echo "  lpath += <path>   : Add a new path to PATH"
-            echo "  lpath + <path>    : Add a new path to PATH"
-            echo "  lpath -= <path>   : Remove a path from PATH"
-            echo "  lpath - <path>    : Remove a path from PATH"
-            echo "  lpath !           : Clean up duplicate paths in PATH"
-            echo "  lpath list        : List all paths in PATH"
-            echo "  lpath help        : Show this help message"
-            return 0
-            ;;
-        *)
-            echo "Unknown command: $action"
-            echo "Use 'lpath help' to see available commands."
-            return 1
-            ;;
-    esac
-}
-
 # luka bash end
-
