@@ -44,6 +44,7 @@ function show_help() {
     echo "  luka color             - Vim & Terminal Color Scheme Management Tool"
     echo "  luka sysinfo           - Display system information"
     echo "  luka version           - Show version information"
+    echo "  luka forward           - Forward network ports with various options"
     echo "  luka torch             - Check PyTorch and related library installations"
     echo "  luka help              - Show this help message"
     echo "  lpath                  - Manage PATH entries"
@@ -71,6 +72,9 @@ case "$1" in
         ;;
     torch)
         bash "$SOURCE/shell/torch.sh" "${@:2}"
+        ;;
+    forward)
+        python3 "$SOURCE/fwrd.py" "${@:2}"
         ;;
     version|--version|-v)
         show_version
