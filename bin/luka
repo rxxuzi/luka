@@ -46,6 +46,7 @@ function show_help() {
     echo "  luka version           - Show version information"
     echo "  luka forward           - Forward network ports with various options"
     echo "  luka torch             - Check PyTorch and related library installations"
+    echo "  luka size              - Disk Usage Analysis Tool"
     echo "  luka help              - Show this help message"
     echo "  lpath                  - Manage PATH entries"
     echo
@@ -75,6 +76,9 @@ case "$1" in
         ;;
     forward)
         python3 "$SOURCE/fwrd.py" "${@:2}"
+        ;;
+    size)
+        python3 "$SOURCE/size.py" "${@:2}"
         ;;
     version|--version|-v)
         show_version
