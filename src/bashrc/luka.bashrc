@@ -1,8 +1,18 @@
 # luka bashrc
 export LUKA_SOURCED=1
 
-fg() { printf '\[\e[38;2;%s;%s;%sm\]' "$1" "$2" "$3"; }
-bg() { printf '\[\e[48;2;%s;%s;%sm\]' "$1" "$2" "$3"; }
+export TERM=xterm-256color
+export COLORTERM=truecolor
+
+fg() {
+    if [ $# -eq 1 ]; then
+        printf '\[\e[38;5;%sm\]' "$1"
+    elif [ $# -eq 3 ]; then
+        printf '\[\e[38;2;%s;%s;%sm\]' "$1" "$2" "$3"
+    else
+        echo "Invalid number of arguments for fg()"
+    fi
+}
 
 # テキスト属性
 reset='\[\e[0m\]'

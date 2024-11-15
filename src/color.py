@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+# color.py
 
 import os
 import sys
 import json
-import argparse
 import shutil
 
 # 定数
@@ -13,6 +13,7 @@ SCRIPTS_DIR = os.path.join(BASE_DIR, '../res/scripts')
 VIM_COLORS_DIR = os.path.expanduser('~/.vim/colors')
 VIMRC_PATH = os.path.expanduser('~/.vimrc')
 BASHRC_PATH = os.path.expanduser('~/luka/src/bashrc/luka.bashrc')
+C256_JSON_PATH = os.path.join(BASE_DIR, '../res/c_256.json')
 
 def load_color_schemes():
     """
@@ -33,6 +34,21 @@ def load_color_schemes():
                 except json.JSONDecodeError as e:
                     print(f"Error: an error occurred while parsing {file}: {e}")
     return schemes
+
+def load_xterm_colors():
+    """
+    res/c_256.jsonを読み込んでxtermカラーのリストを返す。
+    """
+    if not os.path.exists(C256_JSON_PATH):
+        print(f"Error: xterm color file '{C256_JSON_PATH}' not found.")
+        sys.exit(1)
+    with open(C256_JSON_PATH, 'r') as f:
+        try:
+            xterm_colors = json.load(f)
+        except json.JSONDecodeError as e:
+            print(f"Error: an error occurred while parsing c_256.json: {e}")
+            sys.exit(1)
+    return xterm_colors
 
 def list_schemes(schemes):
     """
@@ -66,7 +82,7 @@ def select_scheme(schemes, identifier):
             print(f"Error: No corresponding color scheme found for name '{identifier}'.")
             sys.exit(1)
 
-def apply_vim_colorscheme(scheme):
+def apply_vim_colorscheme(scheme, verbose=False):
     """
     Vimのカラースキームを適用する。
     """
@@ -83,17 +99,18 @@ def apply_vim_colorscheme(scheme):
     # Vimのカラースキームディレクトリにコピー
     os.makedirs(VIM_COLORS_DIR, exist_ok=True)
     shutil.copy(scheme_vim_file, VIM_COLORS_DIR)
-    print(f"'{scheme['name']}.vim' copied to '{VIM_COLORS_DIR}'.")
+    if verbose:
+        print(f"'{scheme['name']}.vim' copied to '{VIM_COLORS_DIR}'.")
 
     # .vimrcを更新してカラースキームを設定
-    update_vimrc(scheme['name'])
+    update_vimrc(scheme['name'], verbose)
     print(f"Vim color scheme set to '{scheme['name']}'.")
 
-def apply_terminal_colorscheme(scheme):
+def apply_terminal_colorscheme(scheme, xterm_colors, use_xterm256=False, verbose=False):
     """
     ターミナルのカラースキームを適用するためにluka.bashrcを変更する。
     """
-    ansi_colors = generate_prompt_color_sequences(scheme)
+    ansi_colors = generate_prompt_color_sequences(scheme, xterm_colors, use_xterm256)
     if not ansi_colors:
         print("Error: ANSI color sequence generation failed.")
         sys.exit(1)
@@ -115,10 +132,16 @@ def apply_terminal_colorscheme(scheme):
             in_prompt_color_section = True
             new_lines.append(line)  # コメント行を保持
             # 新しいカラー設定を挿入
-            new_lines.append(f"c1=$(fg {c1['r']} {c1['g']} {c1['b']})\n")
-            new_lines.append(f"c2=$(fg {c2['r']} {c2['g']} {c2['b']})\n")
-            new_lines.append(f"c3=$(fg {c3['r']} {c3['g']} {c3['b']})\n")
-            new_lines.append(f"c4=$(fg {c4['r']} {c4['g']} {c4['b']})\n")
+            if use_xterm256:
+                new_lines.append(f"c1='\\e[38;5;{c1}m'\n")
+                new_lines.append(f"c2='\\e[38;5;{c2}m'\n")
+                new_lines.append(f"c3='\\e[38;5;{c3}m'\n")
+                new_lines.append(f"c4='\\e[38;5;{c4}m'\n")
+            else:
+                new_lines.append(f"c1=$(fg {c1['r']} {c1['g']} {c1['b']})\n")
+                new_lines.append(f"c2=$(fg {c2['r']} {c2['g']} {c2['b']})\n")
+                new_lines.append(f"c3=$(fg {c3['r']} {c3['g']} {c3['b']})\n")
+                new_lines.append(f"c4=$(fg {c4['r']} {c4['g']} {c4['b']})\n")
             continue
         if line.strip() == "# Luka Prompt Color End":
             in_prompt_color_section = False
@@ -130,19 +153,34 @@ def apply_terminal_colorscheme(scheme):
     # Luka Prompt Color Sectionが存在しない場合は追加
     if not any("# Luka Prompt Color Start" in line for line in lines):
         new_lines.append("\n# Luka Prompt Color Start\n")
-        new_lines.append(f"c1=$(fg {c1['r']} {c1['g']} {c1['b']})\n")
-        new_lines.append(f"c2=$(fg {c2['r']} {c2['g']} {c2['b']})\n")
-        new_lines.append(f"c3=$(fg {c3['r']} {c3['g']} {c3['b']})\n")
-        new_lines.append(f"c4=$(fg {c4['r']} {c4['g']} {c4['b']})\n")
+        if use_xterm256:
+            new_lines.append(f"c1='\\e[38;5;{c1}m'\n")
+            new_lines.append(f"c2='\\e[38;5;{c2}m'\n")
+            new_lines.append(f"c3='\\e[38;5;{c3}m'\n")
+            new_lines.append(f"c4='\\e[38;5;{c4}m'\n")
+        else:
+            new_lines.append(f"c1=$(fg {c1['r']} {c1['g']} {c1['b']})\n")
+            new_lines.append(f"c2=$(fg {c2['r']} {c2['g']} {c2['b']})\n")
+            new_lines.append(f"c3=$(fg {c3['r']} {c3['g']} {c3['b']})\n")
+            new_lines.append(f"c4=$(fg {c4['r']} {c4['g']} {c4['b']})\n")
         new_lines.append("# Luka Prompt Color End\n")
 
     with open(BASHRC_PATH, 'w') as f:
         f.writelines(new_lines)
 
-    print(f"Terminal color scheme set to '{scheme['name']}'. Restart the terminal to apply the change or run the following command")
+    print(f"Terminal color scheme set to '{scheme['name']}'. Restart the terminal to apply the change or run the following command:")
     print(f"reload")
 
-def update_vimrc(scheme_name):
+    if verbose:
+        # Show the new colors in the terminal
+        print("New terminal colors:")
+        for idx, c in enumerate([c1, c2, c3, c4], 1):
+            if use_xterm256:
+                print(f"c{idx}: \033[38;5;{c}m█\033[0m")
+            else:
+                print(f"c{idx}: \033[38;2;{c['r']};{c['g']};{c['b']}m█\033[0m")
+
+def update_vimrc(scheme_name, verbose=False):
     """
     .vimrcを更新して指定されたカラースキームを設定する。
     """
@@ -164,7 +202,10 @@ def update_vimrc(scheme_name):
         if not found:
             f.write(f"\ncolorscheme {scheme_name}\n")
 
-def generate_prompt_color_sequences(scheme):
+    if verbose:
+        print(f".vimrc updated with colorscheme {scheme_name}.")
+
+def generate_prompt_color_sequences(scheme, xterm_colors, use_xterm256):
     """
     カラースキームに基づいてターミナルプロンプト用のカラー情報を生成する。
     """
@@ -179,18 +220,49 @@ def generate_prompt_color_sequences(scheme):
 
     # 最初の4色を選択
     selected_colors = at_colors[:4]
-    ansi_colors = []
+    color_values = []
     for color in selected_colors:
         if color.upper() == "NONE":
-            ansi_colors.append({"r":0, "g":0, "b":0})  # デフォルト色または適切なデフォルト値
+            color_values.append(None)  # デフォルト色または適切なデフォルト値
         else:
-            rgb = hex_to_rgb(color)
-            if rgb:
-                ansi_colors.append({"r":rgb[0], "g":rgb[1], "b":rgb[2]})
+            if use_xterm256:
+                xterm_code = hex_to_xterm256(color, xterm_colors)
+                if xterm_code is not None:
+                    color_values.append(xterm_code)
+                else:
+                    print(f"Error: Invalid color code '{color}'.")
+                    sys.exit(1)
             else:
-                print(f"Error: Invalid color code '{color}'.")
-                sys.exit(1)
-    return ansi_colors
+                rgb = hex_to_rgb(color)
+                if rgb:
+                    color_values.append({"r": rgb[0], "g": rgb[1], "b": rgb[2]})
+                else:
+                    print(f"Error: Invalid color code '{color}'.")
+                    sys.exit(1)
+    return color_values
+
+def hex_to_xterm256(hex_color, xterm_colors):
+    """
+    HEXカラーコードから最も近いxterm 256色のカラーコードを取得する。
+    """
+    rgb = hex_to_rgb(hex_color)
+    if rgb is None:
+        return None
+    min_distance = float('inf')
+    closest_xterm = None
+    for color in xterm_colors:
+        xterm_rgb = color['rgb']
+        dist = color_distance(rgb, xterm_rgb)
+        if dist < min_distance:
+            min_distance = dist
+            closest_xterm = color['xterm']
+    return closest_xterm
+
+def color_distance(rgb1, rgb2):
+    """
+    2つのRGBカラー間の距離を計算する。
+    """
+    return sum((c1 - c2) ** 2 for c1, c2 in zip(rgb1, rgb2))
 
 def hex_to_rgb(hex_color):
     """
@@ -201,7 +273,7 @@ def hex_to_rgb(hex_color):
         return None
     try:
         r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        return (r, g, b)
+        return [r, g, b]
     except ValueError:
         return None
 
@@ -216,21 +288,21 @@ def backup_file(file_path):
     else:
         print(f"The backup already exists at '{backup_path}'.")
 
-def reset_colorscheme():
+def reset_colorscheme(xterm_colors, use_xterm256=False, verbose=False):
     """
     Vimとターミナルのカラースキームをデフォルトにリセットする。
     """
     # Vimのカラースキームをリセット
-    reset_vim_colorscheme()
+    reset_vim_colorscheme(verbose)
 
     # ターミナルのカラースキームをリセット
-    reset_terminal_colorscheme()
+    reset_terminal_colorscheme(xterm_colors, use_xterm256, verbose)
 
     print("Vim and terminal color schemes reset to default.") 
     print("Restart terminal to apply changes or run the following command:") 
-    print("reload")
+    print("`reload`")
 
-def reset_vim_colorscheme():
+def reset_vim_colorscheme(verbose=False):
     """
     Vimのカラースキームをデフォルトにリセットする。
     """
@@ -252,9 +324,10 @@ def reset_vim_colorscheme():
         if not found:
             f.write("\ncolorscheme default\n")
 
-    print("Vim color scheme reset to default.")
+    if verbose:
+        print("Vim color scheme reset to default.")
 
-def reset_terminal_colorscheme():
+def reset_terminal_colorscheme(xterm_colors, use_xterm256=False, verbose=False):
     """
     ターミナルのカラースキームをデフォルトにリセットするためにluka.bashrcを変更する。
     """
@@ -263,6 +336,15 @@ def reset_terminal_colorscheme():
 
     prompt_start = "# Luka Prompt Color Start"
     prompt_end = "# Luka Prompt Color End"
+
+    # デフォルトのカラーコードを設定
+    default_colors = ["#87ffff","#87ff00","#ff7fff","#feec90"]
+
+    if use_xterm256:
+        color_values = [hex_to_xterm256(color, xterm_colors) for color in default_colors]
+    else:
+        color_values = [hex_to_rgb(color) for color in default_colors]
+        color_values = [{"r": rgb[0], "g": rgb[1], "b": rgb[2]} if rgb else None for rgb in color_values]
 
     with open(BASHRC_PATH, 'r') as f:
         lines = f.readlines()
@@ -274,10 +356,16 @@ def reset_terminal_colorscheme():
             in_prompt_color_section = True
             new_lines.append(line)  # コメント行を保持
             # デフォルトのカラー設定を挿入
-            new_lines.append("c1=$(fg 70 255 70)\n")
-            new_lines.append("c2=$(fg 0 255 255)\n")
-            new_lines.append("c3=$(fg 255 255 255)\n")
-            new_lines.append("c4=$(fg 0 255 255)\n")
+            if use_xterm256:
+                new_lines.append(f"c1='\\e[38;5;{color_values[0]}m'\n")
+                new_lines.append(f"c2='\\e[38;5;{color_values[1]}m'\n")
+                new_lines.append(f"c3='\\e[38;5;{color_values[2]}m'\n")
+                new_lines.append(f"c4='\\e[38;5;{color_values[3]}m'\n")
+            else:
+                new_lines.append(f"c1=$(fg {color_values[0]['r']} {color_values[0]['g']} {color_values[0]['b']})\n")
+                new_lines.append(f"c2=$(fg {color_values[1]['r']} {color_values[1]['g']} {color_values[1]['b']})\n")
+                new_lines.append(f"c3=$(fg {color_values[2]['r']} {color_values[2]['g']} {color_values[2]['b']})\n")
+                new_lines.append(f"c4=$(fg {color_values[3]['r']} {color_values[3]['g']} {color_values[3]['b']})\n")
             continue
         if line.strip() == prompt_end:
             in_prompt_color_section = False
@@ -289,16 +377,23 @@ def reset_terminal_colorscheme():
     # Luka Prompt Color Sectionが存在しない場合は追加
     if not any(prompt_start in line for line in lines):
         new_lines.append("\n# Luka Prompt Color Start\n")
-        new_lines.append("c1=$(fg 70 255 70)\n")
-        new_lines.append("c2=$(fg 0 255 255)\n")
-        new_lines.append("c3=$(fg 255 255 255)\n")
-        new_lines.append("c4=$(fg 0 255 255)\n")
+        if use_xterm256:
+            new_lines.append(f"c1='\\e[38;5;{color_values[0]}m'\n")
+            new_lines.append(f"c2='\\e[38;5;{color_values[1]}m'\n")
+            new_lines.append(f"c3='\\e[38;5;{color_values[2]}m'\n")
+            new_lines.append(f"c4='\\e[38;5;{color_values[3]}m'\n")
+        else:
+            new_lines.append(f"c1=$(fg {color_values[0]['r']} {color_values[0]['g']} {color_values[0]['b']})\n")
+            new_lines.append(f"c2=$(fg {color_values[1]['r']} {color_values[1]['g']} {color_values[1]['b']})\n")
+            new_lines.append(f"c3=$(fg {color_values[2]['r']} {color_values[2]['g']} {color_values[2]['b']})\n")
+            new_lines.append(f"c4=$(fg {color_values[3]['r']} {color_values[3]['g']} {color_values[3]['b']})\n")
         new_lines.append("# Luka Prompt Color End\n")
 
     with open(BASHRC_PATH, 'w') as f:
         f.writelines(new_lines)
 
-    print("Terminal color scheme reset to default.")
+    if verbose:
+        print("Terminal color scheme reset to default.")
 
 def show_help():
     """
@@ -308,20 +403,24 @@ def show_help():
 Luka Color - Vim and Terminal Color Scheme Management Tool
 
 Usage:
-  luka color <command> [<args>]
+  luka color <command> [<args>] [options]
 
 Commands:
   list
     - Displays a list of registered color schemes.
 
-  set <name|index> [--vim] [--term]
+  set <name|index> [--vim] [--term] [-x] [-v|--verbose]
     - Apply the specified color scheme.
     - Option `--vim`: Apply only to Vim.
     - Option `--term`: Apply only to the terminal.
+    - Option `-x`: Use xterm 256-color mode for terminal colors.
+    - Option `-v`, `--verbose`: Enable verbose output.
     - If no option is specified, the color scheme is applied to both Vim and the terminal.
 
-  reset
+  reset [-x] [-v|--verbose]
     - Reset Vim and terminal color schemes to default.
+    - Option `-x`: Use xterm 256-color mode for terminal colors.
+    - Option `-v`, `--verbose`: Enable verbose output.
 
   help
     - Display this help message.
@@ -330,18 +429,20 @@ Examples:
   luka color list
   luka color set berry --vim
   luka color set berry --term
+  luka color set berry -x
   luka color set berry
   luka color set 0 --vim
-  luka color help
+  luka color set 2 -x
+  luka color reset -x
     """
     print(help_text)
-
 
 def main():
     """
     メイン関数。引数を解析し、対応する操作を実行する。
     """
     schemes = load_color_schemes()
+    xterm_colors = load_xterm_colors()
 
     if len(sys.argv) < 2:
         show_help()
@@ -363,12 +464,21 @@ def main():
         # デフォルトで両方に適用
         apply_vim = False
         apply_term = False
+        use_xterm256 = False
+        verbose = False
 
         for opt in options:
             if opt == '--vim':
                 apply_vim = True
             elif opt == '--term':
                 apply_term = True
+            elif opt == '-x':
+                use_xterm256 = True
+            elif opt == '-v' or opt == '--verbose':
+                verbose = True
+            else:
+                print(f"Error: unknown option '{opt}'.")
+                sys.exit(1)
 
         # オプションが指定されていない場合、両方に適用
         if not (apply_vim or apply_term):
@@ -379,51 +489,33 @@ def main():
 
         if apply_vim:
             backup_file(VIMRC_PATH)
-            apply_vim_colorscheme(scheme)
+            apply_vim_colorscheme(scheme, verbose)
 
         if apply_term:
             backup_file(BASHRC_PATH)
-            apply_terminal_colorscheme(scheme)
+            apply_terminal_colorscheme(scheme, xterm_colors, use_xterm256, verbose)
 
         sys.exit(0)
 
     elif command_or_identifier == 'reset':
-        reset_colorscheme()
+        options = sys.argv[2:]
+        use_xterm256 = False
+        verbose = False
+
+        for opt in options:
+            if opt == '-x':
+                use_xterm256 = True
+            elif opt == '-v' or opt == '--verbose':
+                verbose = True
+            else:
+                print(f"Error: unknown option '{opt}'.")
+                sys.exit(1)
+
+        reset_colorscheme(xterm_colors, use_xterm256, verbose)
         sys.exit(0)
 
     elif command_or_identifier == 'help' or command_or_identifier == '--help' :
         show_help()
-        sys.exit(0)
-
-    elif command_or_identifier.isdigit():
-        index = int(command_or_identifier)
-        options = sys.argv[2:]
-
-        # デフォルトで両方に適用
-        apply_vim = False
-        apply_term = False
-
-        for opt in options:
-            if opt == '--vim':
-                apply_vim = True
-            elif opt == '--term':
-                apply_term = True
-
-        # オプションが指定されていない場合、両方に適用
-        if not (apply_vim or apply_term):
-            apply_vim = True
-            apply_term = True
-
-        scheme = select_scheme(schemes, command_or_identifier)
-
-        if apply_vim:
-            backup_file(VIMRC_PATH)
-            apply_vim_colorscheme(scheme)
-
-        if apply_term:
-            backup_file(BASHRC_PATH)
-            apply_terminal_colorscheme(scheme)
-
         sys.exit(0)
 
     else:
