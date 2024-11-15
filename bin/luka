@@ -8,8 +8,11 @@
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-SOURCE="$(cd "$(dirname "$0")/../src" && pwd)"
-VERSION_FILE="$(dirname "$0")/.VERSION"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+SOURCE="$ROOT_DIR/src"
+VERSION_FILE="$SCRIPT_DIR/.VERSION"
 
 if [ -f "$VERSION_FILE" ]; then
     version=$(cat "$VERSION_FILE")
@@ -47,6 +50,7 @@ function show_help() {
     echo "  luka forward           - Forward network ports with various options"
     echo "  luka torch             - Check PyTorch and related library installations"
     echo "  luka size              - Disk Usage Analysis Tool"
+    echo "  luka update            - Update luka to the latest version"
     echo "  luka help              - Show this help message"
     echo "  lpath                  - Manage PATH entries"
     echo
@@ -79,6 +83,9 @@ case "$1" in
         ;;
     size)
         python3 "$SOURCE/size.py" "${@:2}"
+        ;;
+    update)
+        bash "$SOURCE/update.sh" "${@:2}"
         ;;
     version|--version|-v)
         show_version
