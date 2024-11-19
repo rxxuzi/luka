@@ -47,9 +47,10 @@ function show_help() {
     echo "  luka color             - Vim & Terminal Color Scheme Management Tool"
     echo "  luka sysinfo           - Display system information"
     echo "  luka version           - Show version information"
-    echo "  luka forward           - Forward network ports with various options"
+    echo "  luka forward           - Forward network ports"
     echo "  luka torch             - Check PyTorch and related library installations"
     echo "  luka size              - Disk Usage Analysis Tool"
+    echo "  luka psm               - Process manager"
     echo "  luka update            - Update luka to the latest version"
     echo "  luka help              - Show this help message"
     echo "  lpath                  - Manage PATH entries"
@@ -84,7 +85,10 @@ case "$1" in
     size)
         python3 "$SOURCE/size.py" "${@:2}"
         ;;
-    update)
+    psm)
+        python3 "$SOURCE/psm.py" "${@:2}"
+        ;;
+    update| --update | -u)
         bash "$SOURCE/update.sh" "${@:2}"
         ;;
     version|--version|-v)

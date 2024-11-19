@@ -1,3 +1,7 @@
 urllib3
 pyyaml
 colorama
+
+# for psm.py
+psutil
+prompt_toolkit
