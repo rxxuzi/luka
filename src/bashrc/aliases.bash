@@ -16,7 +16,6 @@ alias '....'='cd ../../../../'
 alias '.....'='cd ../../../../'
 alias '.4'='cd ../../../../'
 alias '.5'='cd ../../../../..'
-alias sha256='openssl sha256'
 alias whatsup='service --status-all'  
 alias mkdir='mkdir -pv'
 alias cls='clear'
@@ -34,5 +33,15 @@ alias serve='python3 -m http.server'
 alias reload='source ~/.bashrc'
 alias revenv='source venv/bin/activate'
 alias py='python3'
-alias fastc='f() { output="${1%.c}"; gcc "$1" -o "$output.bin" && ./"$output.bin"; }; f'
-alias '?'='f() { ls -l "$1" && file "$1"; }; f'
+alias '?'='f() { ls -lh "$1" && file "$1"; }; f'
+alias verify='find . -type d -exec chmod 755 {} \; && find . -type f -exec chmod 644 {} \;'
+
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+mkvenv() {
+    python3 -m venv "$1" && source "$1/bin/activate"
+}
+
+alias rmvim='function _rmvim() { rm -f "$1" && vim "$1"; }; _rmvim'

@@ -49,11 +49,11 @@ function show_help() {
     echo "  luka version           - Show version information"
     echo "  luka forward           - Forward network ports"
     echo "  luka torch             - Check PyTorch and related library installations"
+    echo "  luka todo              - Simple Todo App"
     echo "  luka size              - Disk Usage Analysis Tool"
-    echo "  luka psm               - Process manager"
     echo "  luka update            - Update luka to the latest version"
     echo "  luka help              - Show this help message"
-    echo "  lpath                  - Manage PATH entries"
+    echo "  @                  - Manage PATH entries"
     echo
     echo "Each command supports '-h' for more information."
 }
@@ -85,8 +85,8 @@ case "$1" in
     size)
         python3 "$SOURCE/size.py" "${@:2}"
         ;;
-    psm)
-        python3 "$SOURCE/psm.py" "${@:2}"
+    todo)
+        python3 "$SOURCE/todo.py" "${@:2}"
         ;;
     update| --update | -u)
         bash "$SOURCE/update.sh" "${@:2}"

@@ -56,13 +56,9 @@ show_help() {
     echo "  -h, --help            Show this help message and exit"
     echo "  -q, --quiet           Run script in quiet mode (no colors)"
     echo "  -v, --verbose         Display detailed information"
-    echo "  -f, --format <fmt>    Output format: text (default), json, yaml, yml, csv"
     echo ""
     echo "Examples:"
     echo "  luka sysinfo -v"
-    echo "  luka sysinfo --format json"
-    echo "  luka sysinfo --format yaml"
-    echo "  luka sysinfo --format csv"
     exit 0
 }
 
@@ -172,42 +168,35 @@ get_uptime_info() {
     log "info" "System Uptime: $UPTIME"
 }
 
-# Function to get network information
+# 以下の詳細情報取得関数も verbose モードでのみ実行されるようにします
+
 get_network_info_func() {
     if [ "$VERBOSE" = true ]; then
         declare -A NETWORK
         if [[ "$OS_TYPE" == "macOS" ]]; then
-            # Get IP addresses for all active interfaces
             while read -r iface ip; do
                 NETWORK["$iface"]="$ip"
             done < <(ifconfig | grep 'inet ' | awk '{print $1, $2}')
         elif [[ "$OS_TYPE" == "Linux" ]]; then
-            # Get IP addresses for all active interfaces
             while read -r iface ip; do
                 NETWORK["$iface"]="$ip"
             done < <(ip -o -4 addr list up | awk '{print $2, $4}' | cut -d/ -f1)
         fi
 
-        # Convert associative array to key=value pairs with hierarchical keys
         NETWORK_INFO=""
         for iface in "${!NETWORK[@]}"; do
-            NETWORK_INFO+="Network.$iface.IP=\"$NETWORK[$iface]\"\n"
+            NETWORK_INFO+="Network.$iface.IP=\"${NETWORK[$iface]}\"\n"
             log "info" "Network Interface: $iface - IP: ${NETWORK[$iface]}"
         done
     fi
 }
 
-# Function to get GPU information
 get_gpu_info_func() {
     if [ "$VERBOSE" = true ]; then
         if command_exists lspci; then
             GPU_DEVICES=$(lspci | grep -i -E 'VGA|3D|Display')
             if [ -n "$GPU_DEVICES" ]; then
-                GPU_INFO=$(echo "$GPU_DEVICES" | awk '
-                    {
-                        print "GPU.Device=\"" $0 "\""
-                    }
-                ')
+                GPU_INFO=$(echo "$GPU_DEVICES" | awk '{print "GPU.Device=\"" $0 "\""}')
                 log "info" "GPU Device: $GPU_DEVICES"
             else
                 GPU_INFO="GPU.Device=\"No GPU information found.\""
@@ -218,7 +207,6 @@ get_gpu_info_func() {
             log "info" "GPU Information: lspci command not found."
         fi
 
-        # If NVIDIA GPU is present, get detailed info using nvidia-smi
         if command_exists nvidia-smi; then
             NVIDIA_INFO=$(nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used,memory.free --format=csv,noheader,nounits | awk -F', ' '
                 {
@@ -236,12 +224,10 @@ get_gpu_info_func() {
             log "info" "NVIDIA GPU Information: nvidia-smi not found."
         fi
 
-        # Append to overall GPU info
         GPU_INFO_FINAL="$GPU_INFO"
     fi
 }
 
-# Function to get CPU information
 get_cpu_info_func() {
     if [ "$VERBOSE" = true ]; then
         if [[ "$OS_TYPE" == "macOS" ]]; then
@@ -263,7 +249,6 @@ get_cpu_info_func() {
     fi
 }
 
-# Function to get number of CPU cores
 get_cpu_cores_func() {
     if [ "$VERBOSE" = true ]; then
         CPU_CORES=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "Unknown")
@@ -271,7 +256,6 @@ get_cpu_cores_func() {
     fi
 }
 
-# Function to get disk usage
 get_disk_usage_func() {
     if [ "$VERBOSE" = true ]; then
         if [[ "$OS_TYPE" == "Linux" ]]; then
@@ -282,14 +266,12 @@ get_disk_usage_func() {
             DISK_USAGE=$(df -h)
         fi
 
-        # Convert to key=value pairs
         DISK_INFO=""
         while read -r line; do
             if [[ $line == Filesystem* ]]; then
                 continue
             fi
             set -- $line
-            MOUNTED_ON=$(echo "$7" | tr ' ' '_')
             DISK_INFO+="Disk.$1.Type=\"$2\"\n"
             DISK_INFO+="Disk.$1.Size=\"$3\"\n"
             DISK_INFO+="Disk.$1.Used=\"$4\"\n"
@@ -301,7 +283,6 @@ get_disk_usage_func() {
     fi
 }
 
-# Function to get installed software versions
 get_installed_software_versions() {
     if [ "$VERBOSE" = true ]; then
         declare -A SOFTWARE
@@ -322,7 +303,6 @@ get_installed_software_versions() {
             SOFTWARE["docker"]="Not Installed"
         fi
 
-        # Convert associative array to key=value pairs with hierarchical keys
         SOFTWARE_INFO=""
         for key in "${!SOFTWARE[@]}"; do
             SOFTWARE_INFO+="Software.$key.Version=\"${SOFTWARE[$key]}\"\n"
@@ -337,7 +317,6 @@ get_installed_software_versions() {
 
 # Default options
 VERBOSE=false
-FORMAT="text"
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -353,14 +332,6 @@ while [[ $# -gt 0 ]]; do
         -v|--verbose)
             VERBOSE=true
             shift
-            ;;
-        -f|--format)
-            if [[ -n "$2" && ! "$2" =~ ^- ]]; then
-                FORMAT="$2"
-                shift 2
-            else
-                error_exit "Option -f|--format requires an argument (text, json, yaml, yml, csv)."
-            fi
             ;;
         *)
             echo -e "${RED}Unknown option: $1${NC}"
@@ -379,9 +350,6 @@ if [ "$QUIET" = true ]; then
     CYAN=''
     NC=''
 fi
-
-# Determine the directory of the script to find fmt.py
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Gather system information
 get_os_type
@@ -439,12 +407,10 @@ output_text() {
 
     if [ "$VERBOSE" = true ]; then
         echo -e "$SYSTEM_INFO" | while IFS='=' read -r key value; do
-            # Replace dots with spaces for hierarchical keys in text format
             formatted_key=$(echo "$key" | sed -E 's/^([^.]*)\.(.*)$/\1: \2/')
             echo -e "${BLUE}${formatted_key}:${NC} $value"
         done
     else
-        # Simple output: Select a subset of information
         echo -e "Operating System: $OS_TYPE"
         echo -e "OS Version: $OS_VERSION"
         echo -e "CPU Architecture: $CPU_ARCH"
@@ -455,78 +421,5 @@ output_text() {
     echo -e "${GREEN}==============================${NC}"
 }
 
-# Function to output in key=value format for fmt.py
-output_key_value() {
-    echo -e "$SYSTEM_INFO"
-}
-
-# Function to output in CSV format (simple)
-output_csv_simple() {
-    echo "Key,Value"
-    echo "Operating_System,\"$OS_TYPE\""
-    echo "OS_Version,\"$OS_VERSION\""
-    echo "CPU_Architecture,\"$CPU_ARCH\""
-    echo "Hostname,\"$HOSTNAME_INFO\""
-    echo "Kernel_Version,\"$KERNEL_VERSION\""
-}
-
-# Display system information based on format
-case "$FORMAT" in
-    text)
-        output_text
-        ;;
-    json|yaml|yml|csv)
-        # Check if fmt.py exists in the same directory
-        FMT_PY="$SCRIPT_DIR/fmt.py"
-        if [ ! -x "$FMT_PY" ]; then
-            error_exit "'fmt.py' not found or not executable in $SCRIPT_DIR. Please ensure 'fmt.py' is present and has execute permissions."
-        fi
-
-        # Prepare output format
-        if [[ "$FORMAT" == "json" ]]; then
-            FORMAT_OPTION="json"
-        elif [[ "$FORMAT" == "yaml" || "$FORMAT" == "yml" ]]; then
-            FORMAT_OPTION="yaml"
-        elif [[ "$FORMAT" == "csv" ]]; then
-            # Simple CSV output without verbose details
-            if [ "$VERBOSE" = true ]; then
-                # Detailed CSV output (not implemented here)
-                # For simplicity, treat CSV as always simple
-                :
-            fi
-        fi
-
-        # Check dependencies
-        if [[ "$FORMAT_OPTION" == "json" || "$FORMAT_OPTION" == "yaml" ]]; then
-            if ! command_exists python3; then
-                error_exit "python3 is required to run fmt.py. Please install python3."
-            fi
-            if [[ "$FORMAT_OPTION" == "yaml" ]]; then
-                # Check if PyYAML is installed
-                python3 -c "import yaml" 2>/dev/null || error_exit "PyYAML is not installed. Install it using 'pip3 install pyyaml'."
-            fi
-        fi
-
-        # Run fmt.py with key=value input
-        if [[ "$FORMAT" == "csv" ]]; then
-            if [ "$VERBOSE" = true ]; then
-                # For CSV, output all info if verbose
-                echo -e "$SYSTEM_INFO" | awk -F= 'NF==2 {gsub(/"/, "", $2); print "\"" $1 "\",\"" $2 "\""}'
-            else
-                # Simple CSV output
-                output_csv_simple
-            fi
-        else
-            if [ "$VERBOSE" = true ]; then
-                echo -e "$SYSTEM_INFO" | "$FMT_PY" --format "$FORMAT_OPTION"
-            else
-                # Simple output: select a subset of key=value pairs
-                echo -e "Operating_System=\"$OS_TYPE\"\nOS_Version=\"$OS_VERSION\"\nCPU_Architecture=\"$CPU_ARCH\"\nHostname=\"$HOSTNAME_INFO\"\nKernel_Version=\"$KERNEL_VERSION\"" | "$FMT_PY" --format "$FORMAT_OPTION"
-            fi
-        fi
-        ;;
-    *)
-        error_exit "Unsupported format: $FORMAT. Use text, json, yaml, yml, or csv."
-        ;;
-esac
-
+# Display system information in text format
+output_text

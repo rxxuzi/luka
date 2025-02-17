@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
+# -----------------------------------------------------------------------------
+#  forward.py
+#   - DESCRIPTION: Simple Port Forwarding Tool with optional public exposure via localhost.run
+#   - AUTHOR      : github.com/rxxuzi
+#   - LICENSE     : CC0
+# -----------------------------------------------------------------------------
+
 import argparse
 import socket
 import threading
 import sys
 import errno
 import time
-import ipaddress
+import subprocess
+import re
+import signal
+import os
 
 def parse_address(address, default_host=None):
     if address and ':' in address:
@@ -32,10 +42,9 @@ def parse_address(address, default_host=None):
             print(f"ポート '{address}' が有効な整数ではありません。", file=sys.stderr)
             sys.exit(1)
 
-def get_lan_ip(prefer_ethernet=True):
+def get_lan_ip():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # ダミーの接続で自身のLAN IPを取得
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
@@ -66,75 +75,22 @@ def find_available_port(host, port, log_enabled):
                     continue
     return None
 
-def check_ip_allowed(client_ip, allow_list, deny_list):
+def handle_client(source, destination, log_enabled):
     try:
-        client_ip_obj = ipaddress.ip_address(client_ip)
-    except ValueError:
-        return False  # 無効なIPアドレスは拒否
-
-    # 拒否リストのチェック
-    if deny_list:
-        for cidr in deny_list:
-            if client_ip_obj in cidr:
-                return False
-    # 許可リストのチェック
-    if allow_list:
-        for cidr in allow_list:
-            if client_ip_obj in cidr:
-                return True
-        return False  # 許可リストが指定されている場合、リストにないものは拒否
-    return True  # 許可リストが指定されていない場合、全て許可
-
-def handle_client(source, destination, log_enabled, timeout, bandwidth, auth_password, allow_list, deny_list):
-    client_ip = source.getpeername()[0]
-    
-    # IPフィルタリング
-    if not check_ip_allowed(client_ip, allow_list, deny_list):
-        if log_enabled:
-            print(f"接続拒否: {client_ip} は許可されていません。")
-        source.close()
-        return
-    
-    # 認証
-    if auth_password:
-        try:
-            source.settimeout(timeout)
-            source.sendall(b"Password: ")
-            received_password = source.recv(1024).decode().strip()
-            if received_password != auth_password:
-                if log_enabled:
-                    print(f"認証失敗: {client_ip} からの接続が拒否されました。")
-                source.sendall(b"Authentication failed.\n")
-                source.close()
-                return
-            else:
-                source.sendall(b"Authentication successful.\n")
-                if log_enabled:
-                    print(f"認証成功: {client_ip} が接続しました。")
-        except Exception as e:
-            if log_enabled:
-                print(f"認証エラー: {e}", file=sys.stderr)
-            source.close()
-            return
-    
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as src_sock:
-            src_sock.settimeout(timeout)
-            src_sock.connect(destination)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as dst_sock:
+            dst_sock.connect(destination)
             if log_enabled:
                 print(f"接続確立: {source.getpeername()} -> {destination}")
+
             close_flag = threading.Event()
 
             def forward(src, dst, direction):
-                """データをsrcからdstへ転送します。帯域幅制限を適用します。"""
                 try:
                     while not close_flag.is_set():
                         data = src.recv(4096)
                         if not data:
                             break
                         dst.sendall(data)
-                        if bandwidth:
-                            time.sleep(len(data) / (bandwidth * 1024))  # KB/sに基づく遅延
                 except Exception as e:
                     if log_enabled:
                         print(f"転送エラー ({direction}): {e}", file=sys.stderr)
@@ -149,31 +105,28 @@ def handle_client(source, destination, log_enabled, timeout, bandwidth, auth_pas
                     except:
                         pass
 
-            # 双方向転送スレッドの作成
-            thread1 = threading.Thread(target=forward, args=(source, src_sock, "S->D"), daemon=True)
-            thread2 = threading.Thread(target=forward, args=(src_sock, source, "D->S"), daemon=True)
+            thread1 = threading.Thread(target=forward, args=(source, dst_sock, "client->dst"), daemon=True)
+            thread2 = threading.Thread(target=forward, args=(dst_sock, source, "dst->client"), daemon=True)
             thread1.start()
             thread2.start()
             thread1.join()
             thread2.join()
+
     except Exception as e:
         if log_enabled:
             print(f"接続エラー: {e}", file=sys.stderr)
-        # 特定のエラーコードに基づくメッセージ
-        if isinstance(e, OSError) and e.errno == 10049:
-            print("エラー: 要求したアドレスのコンテキストが無効です。ソースサーバーが起動していることを確認してください。", file=sys.stderr)
     finally:
         try:
             source.close()
         except:
             pass
 
-def start_forwarding(src_host, src_port, dst_host, dst_port, log_enabled, shutdown_event, timeout, bandwidth, auth_password, allow_list, deny_list):
+def start_forwarding(src_host, src_port, dst_host, dst_port, log_enabled, shutdown_event):
     final_dst_port = find_available_port(dst_host, dst_port, log_enabled)
     if final_dst_port is None:
         print(f"エラー: 使用可能なポートが見つかりませんでした。ポート範囲 {dst_port}-65535 を確認してください。", file=sys.stderr)
         sys.exit(1)
-    
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         try:
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -181,9 +134,10 @@ def start_forwarding(src_host, src_port, dst_host, dst_port, log_enabled, shutdo
             server.listen(5)
             if log_enabled:
                 print(f"フォワーディング開始: {dst_host}:{final_dst_port} -> {src_host}:{src_port}")
+
             while not shutdown_event.is_set():
                 try:
-                    server.settimeout(1.0)  # 1秒間隔でタイムアウト
+                    server.settimeout(1.0)
                     client, addr = server.accept()
                 except socket.timeout:
                     continue
@@ -192,13 +146,16 @@ def start_forwarding(src_host, src_port, dst_host, dst_port, log_enabled, shutdo
                         break
                     else:
                         raise e
+
                 if log_enabled:
                     print(f"接続受信: {addr}")
+
                 threading.Thread(
-                    target=handle_client, 
-                    args=(client, (src_host, src_port), log_enabled, timeout, bandwidth, auth_password, allow_list, deny_list),
+                    target=handle_client,
+                    args=(client, (src_host, src_port), log_enabled),
                     daemon=True
                 ).start()
+
         except OSError as e:
             if e.errno == errno.EADDRINUSE:
                 print(f"エラー: ポート {final_dst_port} は既に使用されています。別のポートを指定してください。", file=sys.stderr)
@@ -208,11 +165,12 @@ def start_forwarding(src_host, src_port, dst_host, dst_port, log_enabled, shutdo
         except Exception as e:
             print(f"サーバーエラー: {e}", file=sys.stderr)
             sys.exit(1)
+
     return final_dst_port
 
-def check_src_accessible(src_host, src_port, timeout):
+def check_src_accessible(src_host, src_port):
     try:
-        with socket.create_connection((src_host, src_port), timeout=timeout):
+        with socket.create_connection((src_host, src_port), timeout=3):
             return True
     except Exception as e:
         print(f"ソースアドレス {src_host}:{src_port} に接続できません: {e}", file=sys.stderr)
@@ -220,44 +178,96 @@ def check_src_accessible(src_host, src_port, timeout):
 
 def show_help():
     help_text = """
-Luka Forward - Port Forwarding Tool
+Luka Tunnel - Simple Port Forwarding Tool
 
 Usage:
-  luka forward <src> [dst] [options]
+  luka tunnel <src> [dst] [options]
 
 Source:
-  <src>                 ソースアドレス (host:port または port)。port のみ指定時は localhost:port と解釈します。
+  <src>               ソースアドレス (host:port または port)
+                     ポートのみ指定の場合は localhost:port と解釈
 
 Destination:
-  [dst]                 デスティネーションアドレス (host:port または port)。省略時は0.0.0.0:10130を使用します。port のみ指定時は0.0.0.0:port と解釈します。
+  [dst]               デスティネーションアドレス (host:port または port)
+                     省略時は 0.0.0.0:10130
+                     ポートのみ指定の場合は 0.0.0.0:port と解釈
 
 Options:
-  --verbose, -v            詳細なログを表示します。
-  --bandwidth <KB/s>       帯域幅制限をKB/s単位で指定します。
-  --allow <IP/CIDR>        許可するクライアントのIPアドレスまたはサブネットを指定します。複数指定可能です。
-  --deny <IP/CIDR>         拒否するクライアントのIPアドレスまたはサブネットを指定します。複数指定可能です。
-  --auth <password>        クライアント認証のためのパスワードを指定します。
-  --timeout <seconds>      接続のタイムアウト時間（秒）。デフォルトは5秒。
-  --help, -h               このヘルプメッセージを表示します。
+  --public, -p        外部に公開するためのトンネルを開始します。
+  --verbose, -v       詳細なログを表示します。
+  --help, -h          このヘルプメッセージを表示します。
 
 Examples:
-  luka forward localhost:8080
-  luka forward 8080 --verbose
-  luka forward localhost:8080 0.0.0.0:9800 --verbose --bandwidth 100 --auth mypassword
-  luka forward 8080 --verbose --allow 192.168.1.0/24 --deny 192.168.1.100
+  luka tunnel localhost:8080
+  luka tunnel 8080 --verbose
+  luka tunnel localhost:8080 0.0.0.0:9800 --verbose
+  luka tunnel 8080 --public
     """
     print(help_text)
+
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+def signal_handler(sig, frame):
+    print("\nCtrl+C received. Terminating the tunnel...")
+    if 'tunnel_process' in globals():
+        os.killpg(os.getpgid(tunnel_process.pid), signal.SIGTERM)
+        tunnel_process.wait()
+    sys.exit(0)
+
+def start_tunnel(port):
+    global tunnel_process
+    command = f'ssh -R 80:localhost:{port} ssh.localhost.run'  # ホスト名を明示的に指定
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)  # SIGTERMもハンドル
+
+    while True:
+        try:
+            print(f"Starting tunnel for localhost:{port}")
+            tunnel_process = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                preexec_fn=os.setsid  # プロセスグループを設定
+            )
+
+            url_found = False
+            for line in tunnel_process.stdout:
+                print(line.strip())  # デバッグ用に出力
+                # 'localhost.run' の出力からURLを抽出
+                match = re.search(r'https?://[^\s]+', line)
+                if match:
+                    print(f"\nTunnel URL: {match.group(0)}\n")
+                    url_found = True
+                    break  # URLを見つけたらループを抜ける
+
+            if not url_found:
+                print("外部公開URLが見つかりませんでした。出力を確認してください。", file=sys.stderr)
+
+            tunnel_process.wait()
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error occurred: {e}")
+        except KeyboardInterrupt:
+            print("\nKeyboardInterrupt received. Terminating the tunnel...")
+            os.killpg(os.getpgid(tunnel_process.pid), signal.SIGTERM)
+            tunnel_process.wait()
+            sys.exit(0)
+        except Exception as e:
+            print(f"Unexpected error: {e}", file=sys.stderr)
+
+        print("Tunnel closed. Restarting in 5 seconds...")
+        time.sleep(5)
 
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("src", nargs='?', help="ソースアドレス (host:port または port)")
-    parser.add_argument("dst", nargs='?', default=None, help="デスティネーションアドレス (host:port または port)。省略時は0.0.0.0:10130を使用します。")
+    parser.add_argument("dst", nargs='?', default=None, help="デスティネーションアドレス (host:port または port)。省略時は0.0.0.0:10130を使用。")
+    parser.add_argument("--public", "-p", action="store_true", help="外部に公開するためのトンネルを開始します。")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細なログを表示します。")
-    parser.add_argument("--bandwidth", type=int, help="帯域幅制限をKB/s単位で指定します。")
-    parser.add_argument("--allow", action='append', help="許可するクライアントのIPアドレスまたはサブネットを指定します。複数指定可能です。")
-    parser.add_argument("--deny", action='append', help="拒否するクライアントのIPアドレスまたはサブネットを指定します。複数指定可能です。")
-    parser.add_argument("--auth", type=str, help="クライアント認証のためのパスワードを指定します。")
-    parser.add_argument("--timeout", type=int, default=5, help="接続のタイムアウト時間（秒）。デフォルトは5秒。")
     parser.add_argument("--help", "-h", action="store_true", help="このヘルプメッセージを表示します。")
 
     args = parser.parse_args()
@@ -267,25 +277,6 @@ def main():
         sys.exit(0)
 
     log_enabled = args.verbose
-    bandwidth = args.bandwidth
-    allow_list = []
-    deny_list = []
-    auth_password = args.auth
-    timeout = args.timeout
-
-    # IPフィルタリングの準備
-    if args.allow:
-        try:
-            allow_list = [ipaddress.ip_network(entry) for entry in args.allow]
-        except ValueError as e:
-            print(f"許可リストのIPアドレスまたはサブネットが無効です: {e}", file=sys.stderr)
-            sys.exit(1)
-    if args.deny:
-        try:
-            deny_list = [ipaddress.ip_network(entry) for entry in args.deny]
-        except ValueError as e:
-            print(f"拒否リストのIPアドレスまたはサブネットが無効です: {e}", file=sys.stderr)
-            sys.exit(1)
 
     # ソースアドレスの解析
     src_host, src_port = parse_address(args.src, default_host="localhost")
@@ -296,11 +287,11 @@ def main():
     else:
         dst_host, dst_port = "0.0.0.0", 10130
 
-    # ソースアドレスが接続可能か確認
-    if not check_src_accessible(src_host, src_port, timeout):
+    # ソースアドレスへの疎通をチェック
+    if not check_src_accessible(src_host, src_port):
         sys.exit(1)
 
-    # LAN IPの取得
+    # LAN IP取得
     if dst_host == "0.0.0.0":
         lan_ip = get_lan_ip()
         accessible_url = f"http://{lan_ip}:{dst_port}"
@@ -309,25 +300,31 @@ def main():
     else:
         accessible_url = f"http://{dst_host}:{dst_port}"
 
-    print(f"アクセス可能なURL: {accessible_url}")
+    print(f"ローカルでのアクセスURL: {accessible_url}")
 
     shutdown_event = threading.Event()
 
-    try:
-        final_port = start_forwarding(
-            src_host,
-            src_port,
-            dst_host,
-            dst_port,
-            log_enabled,
-            shutdown_event,
-            timeout,
-            bandwidth,
-            auth_password,
-            allow_list,
-            deny_list
-        )
-        # 実際に使用されたポートを再表示
+    if args.public:
+        # 公開モード: サーバーをバックグラウンドで起動し、トンネルを開始
+        final_port_container = {}
+
+        def server_func():
+            port = start_forwarding(src_host, src_port, dst_host, dst_port, log_enabled, shutdown_event)
+            final_port_container['port'] = port
+
+        server_thread = threading.Thread(target=server_func, daemon=True)
+        server_thread.start()
+
+        # サーバーが利用可能なポートを取得するまで待機
+        while 'port' not in final_port_container:
+            time.sleep(0.1)
+        final_port = final_port_container['port']
+
+        # トンネル開始
+        start_tunnel(final_port)
+    else:
+        # 公開モードでない場合、通常のフォワーディング開始
+        final_port = start_forwarding(src_host, src_port, dst_host, dst_port, log_enabled, shutdown_event)
         if dst_host == "0.0.0.0":
             accessible_url = f"http://{lan_ip}:{final_port}"
         elif dst_host == "127.0.0.1":
@@ -335,11 +332,14 @@ def main():
         else:
             accessible_url = f"http://{dst_host}:{final_port}"
         print(f"アクセス可能なURL: {accessible_url}")
-    except KeyboardInterrupt:
-        print("\nシャットダウン中...")
-        shutdown_event.set()
-    finally:
-        print("ポートフォワーディングを停止しました。")
+        try:
+            # メインスレッドを待機（Ctrl+C で終了）
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nシャットダウン中...")
+            shutdown_event.set()
+            sys.exit(0)
 
 if __name__ == "__main__":
     main()

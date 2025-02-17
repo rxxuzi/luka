@@ -1,7 +1,10 @@
-#!/bin/bash
-# update.sh
-# should be in ~/luka/src/update.sh
-# License : GPL3.0
+#!/usr/bin/env bash
+# -----------------------------------------------------------------------------
+#  update.sh
+#   - DESCRIPTION : Luka の最新バージョンへの更新を行うスクリプト
+#   - AUTHOR      : github.com/rxxuzi
+#   - LICENSE     : CC0
+# -----------------------------------------------------------------------------
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -46,11 +49,18 @@ if [ ${PIPESTATUS[0]} -ne 0 ]; then
     exit 1
 fi
 
+echo_info "Making bin/luka executable..." | tee -a "$LOG_FILE"
+chmod +x "$ROOT_DIR/bin/luka"
+
 echo_info "Installing/updating Python dependencies..." | tee -a "$LOG_FILE"
-pip install -r src/requirements.txt | tee -a "$LOG_FILE"
-if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    echo_error "Failed to install Python dependencies." | tee -a "$LOG_FILE"
-    exit 1
+if command -v pip &> /dev/null; then
+    pip install -r src/requirements.txt | tee -a "$LOG_FILE"
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then
+        echo_error "Failed to install Python dependencies." | tee -a "$LOG_FILE"
+        exit 1
+    fi
+else
+    echo_error "pip not found, skip installation of Python dependencies." | tee -a "$LOG_FILE"
 fi
 
 if [ -f "$VERSION_FILE" ]; then

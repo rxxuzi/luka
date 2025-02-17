@@ -1,0 +1,8 @@
+{
+    "name": "icecream",
+    "x": ["#FDFDFA","#CBC9CF"],
+    "z": ["#15152C","#403F4A"],
+    "c": ["#FFD1DC","#B5EAD7","#BDE7FF","#FFDAC1","#FFB5E8","#FFF5BA","#C7CEEA","#FFAEC9","#E2F0CB"],
+    "a": "#FFAAAA",
+    "@": ["#FFAEC9","#FFB5E8","#FFF5BA","#BDE7FF"]
+}

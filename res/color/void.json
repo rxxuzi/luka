@@ -1,0 +1,8 @@
+{
+    "name": "void",
+    "x": ["#FFFFFF","#CCCCCC"],
+    "z": ["#0D0D0D","#1A1A1A"],
+    "c": ["#FF007F","#7FFF00","#7F00FF","#00FFFF","#FF7F00","#007FFF","#FF00FF","#00FF7F","#FFFF00"],
+    "a": "#FF060A",
+    "@": ["#FF007F","#00FFFF","#00FF7F","#FFFF00"]
+}
