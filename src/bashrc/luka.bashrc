@@ -92,7 +92,7 @@ esac
 
 # エイリアスと関数の読み込み
 . ~/luka/src/bashrc/aliases.bash
-. ~/luka/src/bashrc/at.bash_alias
+. ~/luka/src/bashrc/lp.bash
 
 # 不要な関数と変数のクリーンアップ
 unset -f fg bg

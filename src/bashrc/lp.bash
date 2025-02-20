@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-#  at.bashrc
-#   - A function named '@' for managing PATH entries.
+#  lp.bash
+#   - A function named 'lp' for managing PATH entries.
 #   - Author  : github.com/rxxuzi
 #   - License : CC0
 # -----------------------------------------------------------------------------
 
-# @ function for PATH management
-@() {
+# lp function for PATH management
+lp() {
     print_usage() {
         echo "Usage:"
-        echo "  @ +=  <path1> [<path2> ...]    : Add new path(s) to PATH (temporary)"
-        echo "  @ ++= <path1> [<path2> ...]    : Add new path(s) to PATH (persistent)"
-        echo "  @ -=  <path1> [<path2> ...]    : Remove path(s) from PATH"
-        echo "  @ !                            : Clean up duplicate paths in PATH"
-        echo "  @ list                         : List all paths in PATH"
-        echo "  @ help                         : Show this help message"
+        echo "  lp +=  <path1> [<path2> ...]    : Add new path(s) to PATH (temporary)"
+        echo "  lp ++= <path1> [<path2> ...]    : Add new path(s) to PATH (persistent)"
+        echo "  lp -=  <path1> [<path2> ...]    : Remove path(s) from PATH"
+        echo "  lp !                            : Clean up duplicate paths in PATH"
+        echo "  lp list                         : List all paths in PATH"
+        echo "  lp help                         : Show this help message"
     }
 
     # 引数がなければUsage表示して終了
@@ -59,7 +59,7 @@
     case "$action" in
         #--------------------------------------------------
         # 1) 一時的にPATHへ追加
-        #    @ += <path1> [<path2> ...]
+        #    lp += <path1> [<path2> ...]
         #--------------------------------------------------
         "+="|"add")
             if [ $# -lt 1 ]; then
@@ -69,7 +69,7 @@
                 return 1
             fi
 
-            for p in "$@"; do
+            for p in "$lp"; do
                 local abs_path
                 abs_path=$(realpath "$p")
                 # 既にPATHに存在するかチェック
@@ -83,7 +83,7 @@
             ;;
         #--------------------------------------------------
         # 2) 永続的にPATHへ追加
-        #    @ ++= <path1> [<path2> ...]
+        #    lp ++= <path1> [<path2> ...]
         #--------------------------------------------------
         "++="|"addp")
             if [ $# -lt 1 ]; then
@@ -93,7 +93,7 @@
                 return 1
             fi
 
-            for p in "$@"; do
+            for p in "$lp"; do
                 local abs_persistent_path
                 abs_persistent_path=$(realpath "$p")
 
@@ -110,7 +110,7 @@
                     echo "[INFO]  Already in $shell_profile: $abs_persistent_path"
                 else
                     echo "" >> "$shell_profile"
-                    echo "# Added by @ ++= command" >> "$shell_profile"
+                    echo "# Added by lp ++= command" >> "$shell_profile"
                     echo "export PATH=\"\$PATH:$abs_persistent_path\"" >> "$shell_profile"
                     echo "[SAVE]  Added persistently to $shell_profile: $abs_persistent_path"
                 fi
@@ -118,7 +118,7 @@
             ;;
         #--------------------------------------------------
         # 3) PATHから削除
-        #    @ -= <path1> [<path2> ...]
+        #    lp -= <path1> [<path2> ...]
         #--------------------------------------------------
         "-="|"remove"|"del")
             if [ $# -lt 1 ]; then
@@ -128,7 +128,7 @@
                 return 1
             fi
 
-            for p in "$@"; do
+            for p in "$lp"; do
                 local abs_remove
                 abs_remove=$(realpath "$p")
                 # 現在のPATHから削除
@@ -151,7 +151,7 @@
             ;;
         #--------------------------------------------------
         # 4) PATHの重複クリーンアップ
-        #    @ !
+        #    lp !
         #--------------------------------------------------
         "!")
             local old_path="$PATH"
@@ -165,18 +165,18 @@
             ;;
         #--------------------------------------------------
         # 5) PATHの一覧表示
-        #    @ list
+        #    lp list
         #--------------------------------------------------
         "list"|"-l")
             echo "PATH Entries:"
             IFS=':' read -ra ADDR <<< "$PATH"
-            for i in "${!ADDR[@]}"; do
+            for i in "${!ADDR[lp]}"; do
                 printf "%3d. %s\n" $((i+1)) "${ADDR[i]}"
             done
             ;;
         #--------------------------------------------------
         # 6) ヘルプ表示
-        #    @ help / --help / -h
+        #    lp help / --help / -h
         #--------------------------------------------------
         "help"|"--help"|"-h")
             print_usage
