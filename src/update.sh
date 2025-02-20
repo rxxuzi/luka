@@ -42,10 +42,17 @@ echo_info "Starting Luka update process at $(date)" | tee -a "$LOG_FILE"
 
 cd "$ROOT_DIR" || { echo_error "Failed to navigate to root directory: $ROOT_DIR" | tee -a "$LOG_FILE"; exit 1; }
 
-echo_info "Pulling latest changes from Git repository..." | tee -a "$LOG_FILE"
-git pull | tee -a "$LOG_FILE"
+echo_info "Fetching latest changes from Git repository..." | tee -a "$LOG_FILE"
+git fetch origin | tee -a "$LOG_FILE"
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    echo_error "Git pull failed. Please check your network connection or repository status." | tee -a "$LOG_FILE"
+    echo_error "Git fetch failed. Please check your network connection or repository status." | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+echo_info "Forcing local update to match remote..." | tee -a "$LOG_FILE"
+git reset --hard origin/main | tee -a "$LOG_FILE"
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    echo_error "Git reset failed." | tee -a "$LOG_FILE"
     exit 1
 fi
 
