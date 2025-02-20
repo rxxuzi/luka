@@ -1,0 +1,37 @@
+#!/bin/bash
+set -e
+
+# Target directory for cloning
+TARGET_DIR="$HOME/luka"
+
+# Check if the directory already exists
+if [ -d "$TARGET_DIR" ]; then
+    echo "Warning: $TARGET_DIR already exists."
+    read -p "Do you want to delete it and clone a fresh copy? (y/n): " choice
+    case "$choice" in
+        y|Y ) 
+            echo "Deleting the existing directory..."
+            rm -rf "$TARGET_DIR"
+            ;;
+        n|N ) 
+            echo "Aborting the process."
+            exit 1
+            ;;
+        * ) 
+            echo "Invalid input. Process aborted."
+            exit 1
+            ;;
+    esac
+fi
+
+echo "Cloning the GitHub repository into $TARGET_DIR..."
+git clone https://github.com/rxxuzi/luka.git "$TARGET_DIR" || {
+    echo "Failed to clone the repository."
+    exit 1
+}
+
+cd "$TARGET_DIR"
+
+# Grant execute permission to the initialization script and run it
+chmod +x luka.init
+./luka.init
