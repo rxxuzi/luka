@@ -4,21 +4,17 @@
 
 ## Introduction
 
-Luka provides a suite of user-level commands that empower you to manage your Linux environment efficiently without requiring administrative privileges.
+Luka is a lightweight Linux assistant that helps you manage applications, system configurations, and development environments—all without requiring root access.
 
-## Features
+### Quick Start
 
-- **Application Management**: Install, remove, and manage applications without needing sudo privileges.
-- **Python Virtual Environment Setup**: Easily set up and manage Python virtual environments.
-- **Color Scheme Management**: Customize Vim and terminal color schemes with ease.
-- **System Information**: Quickly display detailed system information.
-- **Path Management**: Seamlessly manage your PATH entries using the `lpath` command.
-- **Version Control**: Easily check the current version of Luka.
-- **Help System**: Access detailed help for all commands.
+Install Luka with a single command:
 
-## Quickstart
+```sh
+curl -fsSL https://raw.githubusercontent.com/rxxuzi/luka/main/init.sh | sh
+```
 
-Get Luka up and running in just a few simple steps:
+Or manually:
 
 ```sh
 git clone https://github.com/rxxuzi/luka.git
@@ -27,75 +23,48 @@ bash init.sh
 luka version
 ```
 
-**Note**: The `init.sh` script should be run only once to initialize Luka. Subsequent executions will be prevented to avoid overwriting configurations. If you need to reinitialize, remove the `.luka_initialized` flag file from your home directory and run `init.sh` again.
-
-## Installation
-
 ### Prerequisites
 
-- **Git**: To clone the repository.
-- **Bash**: Shell environment for running scripts.
-- **Python 3**: Required for executing Luka's Python-based tools.
-- **pip3**: Python package installer.
+Before installing Luka, ensure the following dependencies are installed:
 
-Ensure these are installed on your system before proceeding.
+- **Git** – Required to clone the repository.
+- **Bash** – A shell environment for running scripts.
+- **Python 3** – Required for Luka’s Python-based tools.
+- **pip3** – The Python package installer.
 
-### Steps
+### Reinitializing Luka
 
-1. **Clone the Repository**
+If you need to reset Luka, remove the flag file and re-run the initialization script:
 
-    ```sh
-    git clone https://github.com/rxxuzi/luka.git
-    ```
-
-2. **Navigate to the Project Directory**
-
-    ```sh
-    cd luka
-    ```
-
-3. **Run the Initialization Script**
-
-    ```sh
-    bash init.sh
-    ```
-
-4. **Verify Installation**
-
-    ```sh
-    luka version
-    ```
-
-    This should display Luka's version information along with ASCII art.
+```sh
+rm ~/.luka_initialized
+bash ~/luka/init.sh
+```
 
 ## Usage
 
-Luka provides a set of user-friendly commands to manage various aspects of your Linux environment. Each command supports the `--help` flag for detailed usage instructions.
+Luka provides a set of user-friendly commands for managing various aspects of your Linux environment. Each command supports the `--help` flag for detailed usage instructions.
 
-### Command Overview
+### Basic Commands
 
 ```sh
 luka <command> [<args>]
 ```
 
-Additionally, PATH management is handled via the `lpath` command:
+Example:
 
 ```sh
-lpath <command> [<args>]
+luka version
 ```
-
-For detailed documentation on each command, please refer to the [Documentation](doc/) directory.
-
-**Note**: After modifying PATH entries, please restart your terminal or run `source ~/.bashrc` to apply changes.
 
 ## Documentation
 
-For detailed information on each command and its subcommands, please refer to the [Documentation](doc/) directory.
+For detailed information on each command and its options, refer to the [Documentation](doc/) directory.
 
 ## License
 
-**Luka** is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more details.
+**Luka** is licensed under the **GNU General Public License v3.0**. See the [LICENSE](LICENSE) file for more details.
 
 ---
 
-*Thank you for using Luka! We hope it enhances your Linux experience.*
+**Thank you for using Luka! We hope it enhances your Linux experience. 🚀**  

@@ -15,12 +15,13 @@ RES_DIR="$(cd "$(dirname "$0")/res" && pwd)"
 VIMRC_PATH="$RES_DIR/.vimrc"
 VIM_COLORS_DIR="$RES_DIR/scripts"
 HOME_VIMRC="$HOME/.vimrc"
-HOME_VIM_COLORS="$HOME/.vim/scripts"
+HOME_VIM_COLORS="$HOME/.vim/colors"
 BASH_ALIASES_PATH="$SOURCE/bashrc/aliases.bash"
-LUKA_BASHRC="~/luka/src/bashrc/luka.bashrc"
+LUKA_BASHRC="$HOME/luka/src/bashrc/luka.bashrc"
 HOME_BASHRC="$HOME/.bashrc"
 ORIGINAL_BASHRC="$HOME/.bashrc.original"
 FLAG_FILE="$HOME/.luka_initialized"
+BIN_PATH="$HOME/luka/bin/luka"
 
 echo "Checking if Luka has already been initialized..."
 
@@ -63,11 +64,9 @@ fi
 cp "$VIM_COLORS_DIR"/*.vim "$HOME_VIM_COLORS"
 echo "Vim colorschemes have been copied to ~/.vim/colors."
 
-source "$HOME/.bashrc"
-chmod +x "$SOURCE/../bin/luka"
+chmod +x "$BIN_PATH"
 echo "bin/luka has been made executable."
 
-# フラグファイルを作成
 touch "$FLAG_FILE"
 
 echo "Luka has been initialized successfully. Please restart your terminal for changes to take effect."

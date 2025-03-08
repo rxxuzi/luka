@@ -53,7 +53,7 @@ function show_help() {
     echo "  luka size              - Disk Usage Analysis Tool"
     echo "  luka update            - Update luka to the latest version"
     echo "  luka help              - Show this help message"
-    echo "  lp                     - Manage PATH entries"
+    echo "  lpath                  - Manage PATH entries"
     echo
     echo "Each command supports '-h' for more information."
 }
