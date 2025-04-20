@@ -23,6 +23,36 @@ COLOR = {
     "RED": "\033[91m"
 }
 
+# 利用可能なコマンドのリスト
+COMMANDS = ["add", "ls", "done", "undone", "rm", "edit", "mv", "clear", "stats", "exit", "help"]
+
+# コマンドの説明
+HELP_TEXT = {
+    "add": "Add a new task: add <task description>",
+    "ls": "List all tasks",
+    "done": "Mark a task as completed: done <task_number>",
+    "undone": "Mark a task as not completed: undone <task_number>",
+    "rm": "Remove a task: rm <task_number> (Use rm * to remove all tasks)",
+    "edit": "Edit a task: edit <task_number> <new_text>",
+    "mv": "Move a task: mv <from_num> <to_num>",
+    "clear": "Clear all completed tasks",
+    "stats": "Show task statistics",
+    "exit": "Exit the application",
+    "help": "Show this help message"
+}
+
+def completer(text, state):
+    """タブ補完のための関数"""
+    # 入力ラインとカーソルの位置を取得
+    line = readline.get_line_buffer()
+    
+    # コマンド部分の補完
+    if not line or line.startswith(text):
+        options = [cmd for cmd in COMMANDS if cmd.startswith(text)]
+        if state < len(options):
+            return options[state]
+    return None
+
 def load_tasks():
     if not os.path.exists(TODO_FILE):
         return []
@@ -106,16 +136,26 @@ def toggle_task_done(tasks, task_idx, done):
     except IndexError:
         print(f"{COLOR['RED']}Invalid task number{COLOR['RESET']}")
 
+def show_help():
+    """ヘルプメッセージを表示する"""
+    print(f"{COLOR['BLUE']}Luka Todo App - Help{COLOR['RESET']}")
+    for cmd in sorted(COMMANDS):
+        print(f"  {cmd:<6} - {HELP_TEXT[cmd]}")
+
 def main():
     tasks = load_tasks()
     
     # 履歴のロード
     if os.path.exists(HISTORY_FILE):
         readline.read_history_file(HISTORY_FILE)
+    
+    # タブ補完の設定
+    readline.set_completer(completer)
+    readline.parse_and_bind("tab: complete")
 
     print(f"{COLOR['BLUE']}Luka Todo App{COLOR['RESET']}")
     print("Commands:  add <task>  ls  done <num>  undone <num>  rm <num>  edit <num> <text>")
-    print("           mv <from> <to>  clear  stats  exit")
+    print("           mv <from> <to>  clear  stats  help  exit")
 
     while True:
         try:
@@ -147,8 +187,25 @@ def main():
 
             elif cmd == "rm":
                 if len(parts) < 2:
-                    print(f"{COLOR['RED']}Usage: rm <task_number>{COLOR['RESET']}")
+                    print(f"{COLOR['RED']}Usage: rm <task_number> or rm *{COLOR['RESET']}")
                     continue
+                
+                # ワイルドカード（rm *）の処理
+                if parts[1] == "*":
+                    if not tasks:
+                        print("No tasks to remove.")
+                        continue
+                        
+                    confirm = input(f"{COLOR['YELLOW']}Are you sure you want to remove ALL tasks? (y/n): {COLOR['RESET']}").lower()
+                    if confirm == 'y':
+                        count = len(tasks)
+                        tasks.clear()
+                        save_tasks(tasks)
+                        print(f"Removed all {count} tasks.")
+                    else:
+                        print("Operation cancelled.")
+                    continue
+                    
                 try:
                     task_idx = int(parts[1]) - 1
                     removed = tasks.pop(task_idx)
@@ -188,12 +245,15 @@ def main():
             elif cmd == "stats":
                 show_stats(tasks)
 
+            elif cmd == "help":
+                show_help()
+                
             elif cmd == "exit":
                 print(f"{COLOR['YELLOW']}Goodbye!{COLOR['RESET']}")
                 break
 
             else:
-                print(f"{COLOR['RED']}Invalid command{COLOR['RESET']}")
+                print(f"{COLOR['RED']}Invalid command. Type 'help' for available commands.{COLOR['RESET']}")
 
         except KeyboardInterrupt:
             print(f"\n{COLOR['YELLOW']}Use 'exit' to quit{COLOR['RESET']}")
@@ -201,6 +261,5 @@ def main():
             print(f"{COLOR['RED']}Error: {str(e)}{COLOR['RESET']}")
 
 if __name__ == "__main__":
-    readline.parse_and_bind("tab: complete")
     readline.set_auto_history(True)
     main()
